@@ -8,17 +8,15 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
     super({
       jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken(),
       ignoreExpiration: false,
-      secretOrKey: process.env.JWT_SECRET, // Pastikan sama dengan di .env
+      secretOrKey: process.env.JWT_SECRET,
     });
   }
 
-  // Fungsi ini jalan otomatis jika token valid
-  // Hasil return akan masuk ke 'req.user' di Controller
   async validate(payload: any) {
     return {
       userId: payload.sub,
       role: payload.role,
-      permissions: payload.permissions, // Penting untuk PermissionsGuard
+      permissions: payload.permissions,
     };
   }
 }

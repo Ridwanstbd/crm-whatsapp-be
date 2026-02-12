@@ -6,7 +6,9 @@ import {
 import { PrismaService } from 'src/prisma/prisma.service';
 import * as bcrypt from 'bcrypt';
 import { CreateUserDto } from './dto/create-user.dto';
+import { UserQueryDto } from './dto/user-query.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
+import { Prisma } from '@prisma/client';
 
 @Injectable()
 export class UsersService {
@@ -20,7 +22,6 @@ export class UsersService {
 
     const hashedPassword = await bcrypt.hash(dto.password, 10);
 
-    // Hapus password dari hasil return
     const { password, ...user } = await this.prisma.user.create({
       data: {
         email: dto.email,
@@ -32,15 +33,44 @@ export class UsersService {
     return user;
   }
 
-  async findAll() {
-    return this.prisma.user.findMany({
-      select: {
-        id: true,
-        email: true,
-        role: { select: { id: true, name: true } },
-        createdAt: true,
+  async findAll(query: UserQueryDto) {
+    const { page = 1, limit = 10, search } = query;
+    const skip = (page - 1) * limit;
+
+    const where: Prisma.UserWhereInput = search
+      ? {
+          OR: [
+            { email: { contains: search } },
+            { role: { name: { contains: search } } },
+          ],
+        }
+      : {};
+
+    const [data, total] = await this.prisma.$transaction([
+      this.prisma.user.findMany({
+        where,
+        skip,
+        take: limit,
+        orderBy: { createdAt: 'desc' },
+        select: {
+          id: true,
+          email: true,
+          role: { select: { id: true, name: true } },
+          createdAt: true,
+        },
+      }),
+      this.prisma.user.count({ where }),
+    ]);
+
+    return {
+      data,
+      meta: {
+        total,
+        page,
+        limit,
+        last_page: Math.ceil(total / limit),
       },
-    });
+    };
   }
 
   async findOne(id: number) {

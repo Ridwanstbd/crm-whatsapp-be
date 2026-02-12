@@ -8,11 +8,13 @@ import {
   Delete,
   UseGuards,
   ParseIntPipe,
+  Query,
 } from '@nestjs/common';
 import { UsersService } from './users.service';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
+import { UserQueryDto } from './dto/user-query.dto';
 import { PermissionsGuard } from 'src/common/guards/permissions.guard';
 import { RequirePermissions } from 'src/common/decorators/permissions.decorator';
 
@@ -29,8 +31,8 @@ export class UsersController {
 
   @Get()
   @RequirePermissions('read_user')
-  findAll() {
-    return this.usersService.findAll();
+  findAll(@Query() query: UserQueryDto) {
+    return this.usersService.findAll(query);
   }
 
   @Get(':id')
