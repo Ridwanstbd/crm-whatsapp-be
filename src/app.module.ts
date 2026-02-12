@@ -1,16 +1,12 @@
 import { Module } from '@nestjs/common';
-import { AuthService } from './modules/auth/auth.service';
-import { UsersService } from './modules/users/users.service';
-import { PrismaService } from './prisma/prisma.service';
-import { PrismaModule } from './prisma/prisma.module';
-import { MailService } from './modules/mail/mail.service';
-import { AuthController } from './modules/auth/auth.controller';
-import { AuthModule } from './modules/auth/auth.module';
-import { RolesService } from './modules/roles/roles.service';
-import { RolesController } from './modules/roles/roles.controller';
-import { UsersController } from './modules/users/users.controller';
 import { ConfigModule } from '@nestjs/config';
 import * as Joi from 'joi';
+
+import { PrismaModule } from './prisma/prisma.module';
+import { AuthModule } from './modules/auth/auth.module';
+import { UsersModule } from './modules/users/users.module';
+import { RolesModule } from './modules/roles/roles.module';
+import { MailModule } from './modules/mail/mail.module';
 
 @Module({
   imports: [
@@ -48,16 +44,14 @@ import * as Joi from 'joi';
         abortEarly: true,
       },
     }),
+
     PrismaModule,
     AuthModule,
+    UsersModule,
+    RolesModule,
+    MailModule,
   ],
-  controllers: [AuthController, RolesController, UsersController],
-  providers: [
-    AuthService,
-    UsersService,
-    PrismaService,
-    MailService,
-    RolesService,
-  ],
+  controllers: [],
+  providers: [],
 })
 export class AppModule {}
