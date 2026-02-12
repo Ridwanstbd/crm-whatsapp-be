@@ -151,7 +151,7 @@
             "header": [],
             "body": {
               "mode": "raw",
-              "raw": "{\n    \"email\": \"newstaff@company.com\",\n    \"password\": \"staff123\",\n    \"roleId\": 3\n}",
+              "raw": "{\n    \"email\": \"newstaff@email.com\",\n    \"password\": \"staff123\",\n    \"roleId\": 3\n}",
               "options": {
                 "raw": {
                   "language": "json"
