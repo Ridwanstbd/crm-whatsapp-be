@@ -8,25 +8,53 @@ datasource db {
 }
 
 model User {
-  id        Int      @id @default(autoincrement())
-  email     String   @unique
-  password  String
-  roleId    Int
-  role      Role     @relation(fields: [roleId], references: [id])
+  id               Int      @id @default(autoincrement())
+  email            String   @unique
+  password         String
+  roleId           Int
+  role             Role     @relation(fields: [roleId], references: [id])
   resetToken       String?
   resetTokenExpiry DateTime?
-  createdAt DateTime @default(now())
+  createdAt        DateTime @default(now())
+
+  devices          WhatsappDevice[]
+  messages         MessageLog[]
 }
 
 model Role {
   id          Int          @id @default(autoincrement())
-  name        String       @unique // Contoh: 'Admin', 'Kasir', 'Gudang'
+  name        String       @unique 
   users       User[]
   permissions Permission[] 
 }
 
 model Permission {
   id     Int    @id @default(autoincrement())
-  action String // Contoh: 'create_product', 'read_report'
+  action String 
   roles  Role[]
+}
+
+model MessageLog {
+  id        String      @id @default(uuid())
+  to        String
+  body      String
+  status    String      @default("PENDING")
+  waMessageId String? @unique
+  
+  userId    Int?
+  user      User?     @relation(fields: [userId], references: [id])
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt @default(now())
+}
+
+model WhatsappDevice {
+  id          String      @id @default(uuid())
+  sessionId   String      @unique
+  phoneNumber String?
+  status      String      @default("DISCONNECTED")
+
+  userId      Int
+  user        User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  updatedAt   DateTime    @updatedAt  
 }

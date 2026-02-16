@@ -2,7 +2,7 @@
 /dist
 /node_modules
 /build
-
+/wa_sessions
 # Logs
 logs
 *.log

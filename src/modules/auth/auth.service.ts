@@ -8,7 +8,7 @@ import { JwtService } from '@nestjs/jwt';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { MailService } from '../mail/mail.service';
 import * as bcrypt from 'bcrypt';
-import * as crypto from 'crypto'; // Bawaan Node.js untuk generate token random
+import * as crypto from 'crypto';
 import { RegisterDto, LoginDto, ResetPasswordDto } from './dto/auth.dto';
 
 @Injectable()
@@ -19,11 +19,9 @@ export class AuthService {
     private mail: MailService,
   ) {}
 
-  // 1. REGISTER
   async register(dto: RegisterDto) {
     const hashedPassword = await bcrypt.hash(dto.password, 10);
 
-    // Pastikan Role ID valid sebelum create
     const roleExists = await this.prisma.role.findUnique({
       where: { id: dto.roleId },
     });
@@ -40,7 +38,6 @@ export class AuthService {
     return { message: 'Registrasi berhasil', userId: user.id };
   }
 
-  // 2. LOGIN (Support Remember Me)
   async login(dto: LoginDto) {
     const user = await this.prisma.user.findUnique({
       where: { email: dto.email },
@@ -56,23 +53,23 @@ export class AuthService {
       role: user.role.name,
       permissions: user.role.permissions.map((p) => p.action),
     };
-
-    // Jika Remember Me = true, token berlaku 7 hari. Jika tidak, 1 hari.
     const expiresIn = dto.rememberMe ? '7d' : '1d';
 
     return {
+      user: {
+        id: user.id,
+        email: user.email,
+        role: user.role.name,
+      },
       access_token: this.jwt.sign(payload, { expiresIn }),
     };
   }
 
-  // 3. FORGOT PASSWORD
   async forgotPassword(email: string) {
     const user = await this.prisma.user.findUnique({ where: { email } });
     if (!user) throw new NotFoundException('Email tidak terdaftar');
 
-    // Generate token random
     const resetToken = crypto.randomBytes(32).toString('hex');
-    // Set expiry 1 jam dari sekarang
     const resetTokenExpiry = new Date(Date.now() + 3600000);
 
     await this.prisma.user.update({
@@ -85,13 +82,11 @@ export class AuthService {
     return { message: 'Email reset password telah dikirim' };
   }
 
-  // 4. RESET PASSWORD
   async resetPassword(dto: ResetPasswordDto) {
-    // Cari user berdasarkan token dan pastikan token belum expired
     const user = await this.prisma.user.findFirst({
       where: {
         resetToken: dto.token,
-        resetTokenExpiry: { gt: new Date() }, // Expiry harus lebih besar dari sekarang
+        resetTokenExpiry: { gt: new Date() },
       },
     });
 
@@ -104,7 +99,7 @@ export class AuthService {
       where: { id: user.id },
       data: {
         password: hashedPassword,
-        resetToken: null, // Hapus token setelah dipakai
+        resetToken: null,
         resetTokenExpiry: null,
       },
     });

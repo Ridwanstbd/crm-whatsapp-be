@@ -1,8 +1,8 @@
 {
   "info": {
     "_postman_id": "b0i1e7p0-l4t3-n3st-js00-boilerplate0",
-    "name": "NestJS Boilerplate API",
-    "description": "Collection untuk Boilerplate NestJS dengan Auth, Users, dan Roles.",
+    "name": "CRM API (Auto UserId)",
+    "description": "Collection untuk CRM NestJS. Otomatis simpan Token dan User ID setelah Login.",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "item": [
@@ -32,16 +32,26 @@
           "response": []
         },
         {
-          "name": "Login (Auto Set Token)",
+          "name": "Login Super Admin",
           "event": [
             {
               "listen": "test",
               "script": {
                 "exec": [
                   "var jsonData = pm.response.json();",
+                  "",
+                  "// 1. Simpan Access Token",
                   "if (jsonData.access_token) {",
                   "    pm.collectionVariables.set(\"token\", jsonData.access_token);",
                   "    console.log(\"Token updated automatically\");",
+                  "}",
+                  "",
+                  "// 2. Simpan User ID (Asumsi response ada object user: { id: 1 })",
+                  "if (jsonData.user && jsonData.user.id) {",
+                  "    pm.collectionVariables.set(\"userId\", jsonData.user.id);",
+                  "    console.log(\"User ID updated automatically: \" + jsonData.user.id);",
+                  "} else {",
+                  "    console.log(\"User ID not found in response. Make sure backend returns user object.\");",
                   "}"
                 ],
                 "type": "text/javascript"
@@ -53,7 +63,7 @@
             "header": [],
             "body": {
               "mode": "raw",
-              "raw": "{\n    \"email\": \"super@admin.com\",\n    \"password\": \"123456\",\n    \"rememberMe\": true\n}",
+              "raw": "{\n    \"email\": \"super@admin.com\",\n    \"password\": \"password\",\n    \"rememberMe\": true\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -290,6 +300,122 @@
           "response": []
         }
       ]
+    },
+    {
+      "name": "Whatsapp",
+      "item": [
+        {
+          "name": "Start Session (Get QR)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "var jsonData = pm.response.json();",
+                  "if (jsonData.sessionId) {",
+                  "    pm.collectionVariables.set(\"sessionId\", jsonData.sessionId);",
+                  "    console.log(\"Session ID saved: \" + jsonData.sessionId);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"userId\": {{userId}}\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/whatsapp/start",
+              "host": ["{{baseUrl}}"],
+              "path": ["whatsapp", "start"]
+            },
+            "description": "Menggunakan userId yang didapat otomatis dari Login."
+          },
+          "response": []
+        },
+        {
+          "name": "Send Message (Form Data)",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "sessionId",
+                  "value": "{{sessionId}}",
+                  "type": "text"
+                },
+                {
+                  "key": "to",
+                  "value": "628123456789",
+                  "type": "text"
+                },
+                {
+                  "key": "message",
+                  "value": "Halo, ini pesan via Form Data",
+                  "type": "text"
+                },
+                {
+                  "key": "file",
+                  "type": "file",
+                  "src": ""
+                },
+                {
+                  "key": "mediaType",
+                  "value": "image",
+                  "type": "text",
+                  "description": "image | video | document"
+                },
+                {
+                  "key": "fileName",
+                  "value": "gambar.png",
+                  "type": "text",
+                  "description": "Wajib diisi jika mediaType = document"
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{baseUrl}}/whatsapp/send",
+              "host": ["{{baseUrl}}"],
+              "path": ["whatsapp", "send"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "End Session (Logout)",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"sessionId\": \"{{sessionId}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/whatsapp/end",
+              "host": ["{{baseUrl}}"],
+              "path": ["whatsapp", "end"]
+            },
+            "description": "Mengakhiri sesi WhatsApp."
+          },
+          "response": []
+        }
+      ]
     }
   ],
   "auth": {
@@ -326,6 +452,16 @@
     },
     {
       "key": "token",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "userId",
+      "value": "1",
+      "type": "string"
+    },
+    {
+      "key": "sessionId",
       "value": "",
       "type": "string"
     }

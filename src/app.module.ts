@@ -7,6 +7,7 @@ import { AuthModule } from './modules/auth/auth.module';
 import { UsersModule } from './modules/users/users.module';
 import { RolesModule } from './modules/roles/roles.module';
 import { MailModule } from './modules/mail/mail.module';
+import { WhatsappModule } from './modules/whatsapp/whatsapp.module';
 
 @Module({
   imports: [
@@ -50,6 +51,7 @@ import { MailModule } from './modules/mail/mail.module';
     UsersModule,
     RolesModule,
     MailModule,
+    WhatsappModule,
   ],
   controllers: [],
   providers: [],

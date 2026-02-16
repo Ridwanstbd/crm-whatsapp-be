@@ -22,6 +22,7 @@ export class UsersService {
 
     const hashedPassword = await bcrypt.hash(dto.password, 10);
 
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const { password, ...user } = await this.prisma.user.create({
       data: {
         email: dto.email,
@@ -34,7 +35,10 @@ export class UsersService {
   }
 
   async findAll(query: UserQueryDto) {
-    const { page = 1, limit = 10, search } = query;
+    const page = Number(query.page) || 1;
+    const limit = Number(query.limit) || 10;
+    const search = query.search;
+
     const skip = (page - 1) * limit;
 
     const where: Prisma.UserWhereInput = search
@@ -96,6 +100,7 @@ export class UsersService {
     }
 
     try {
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
       const { password, ...updatedUser } = await this.prisma.user.update({
         where: { id },
         data,

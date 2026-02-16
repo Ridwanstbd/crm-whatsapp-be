@@ -32,6 +32,10 @@ async function main() {
     'update_permission',
     'delete_permission',
     'assign_permission',
+
+    'connect_whatsapp',
+    'send_whatsapp_message',
+    'send_whatsapp_broadcast',
   ];
 
   // Simpan permission ke database
