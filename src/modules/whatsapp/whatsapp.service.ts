@@ -303,13 +303,19 @@ export class WhatsappService implements OnModuleInit, OnModuleDestroy {
     if (!sock)
       throw new BadRequestException('Sesi tidak ditemukan atau terputus.');
 
-    let formattedTo = to.replace(/[^0-9]/g, '');
-    if (!formattedTo.endsWith('@s.whatsapp.net')) {
-      formattedTo = `${formattedTo}@s.whatsapp.net`;
+    let formattedTo = to;
+
+    if (!formattedTo.includes('@')) {
+      formattedTo = formattedTo.replace(/[^0-9]/g, '') + '@s.whatsapp.net';
     }
-    const result = (await sock.onWhatsApp(formattedTo))?.[0];
-    if (!result || !result.exists) {
-      throw new BadRequestException(`Nomor ${to} tidak terdaftar di WhatsApp.`);
+
+    if (formattedTo.endsWith('@s.whatsapp.net')) {
+      const result = (await sock.onWhatsApp(formattedTo))?.[0];
+      if (!result || !result.exists) {
+        throw new BadRequestException(
+          `Nomor ${to} tidak terdaftar di WhatsApp.`,
+        );
+      }
     }
 
     const device = await this.prisma.whatsappDevice.findUnique({
@@ -489,6 +495,63 @@ export class WhatsappService implements OnModuleInit, OnModuleDestroy {
       return { message: 'Berhasil logout' };
     } catch (e) {
       throw new BadRequestException('Gagal logout: ' + e.message);
+    }
+  }
+
+  async getGroups(sessionId: string) {
+    const sock = this.clients.get(sessionId);
+    if (!sock) {
+      throw new BadRequestException('Sesi tidak ditemukan atau terputus.');
+    }
+
+    try {
+      const groups = await sock.groupFetchAllParticipating();
+
+      return {
+        status: 'success',
+        total: Object.keys(groups).length,
+        data: Object.values(groups).map((g) => ({
+          id: g.id,
+          subject: g.subject,
+          participantsCount: g.participants.length,
+          creation: g.creation,
+        })),
+      };
+    } catch (error) {
+      throw new BadRequestException(
+        'Gagal mengambil daftar grup: ' + error.message,
+      );
+    }
+  }
+
+  async scrapeGroupMembers(sessionId: string, groupId: string) {
+    const sock = this.clients.get(sessionId);
+    if (!sock) {
+      throw new BadRequestException('Sesi tidak ditemukan atau terputus.');
+    }
+
+    try {
+      const metadata = await sock.groupMetadata(groupId);
+
+      const participants = metadata.participants.map((p) => ({
+        waId: p.id,
+        phoneNumber: p.id.split('@')[0],
+        isAdmin: !!p.admin,
+        adminType: p.admin,
+      }));
+
+      return {
+        status: 'success',
+        groupName: metadata.subject,
+        groupId: metadata.id,
+        description: metadata.desc?.toString(),
+        totalMembers: participants.length,
+        members: participants,
+      };
+    } catch (error) {
+      throw new BadRequestException(
+        'Gagal scrape anggota grup: ' + error.message,
+      );
     }
   }
 

@@ -7,6 +7,8 @@ import {
   ParseFilePipeBuilder,
   UploadedFile,
   HttpStatus,
+  Get,
+  Query,
 } from '@nestjs/common';
 import { WhatsappService } from './whatsapp.service';
 import { StartSessionDto, SendMessageDto } from './dto/create-session.dto';
@@ -47,6 +49,21 @@ export class WhatsappController {
   @RequirePermissions('send_whatsapp_message')
   sendBulkMessage(@Body() dto: SendBulkMessageDto) {
     return this.whatsappService.sendBulkMessage(dto);
+  }
+
+  @Get('groups')
+  @RequirePermissions('connect_whatsapp')
+  getGroups(@Query('sessionId') sessionId: string) {
+    return this.whatsappService.getGroups(sessionId);
+  }
+
+  @Get('group-members')
+  @RequirePermissions('connect_whatsapp')
+  getGroupMembers(
+    @Query('sessionId') sessionId: string,
+    @Query('groupId') groupId: string,
+  ) {
+    return this.whatsappService.scrapeGroupMembers(sessionId, groupId);
   }
 
   @Post('end')

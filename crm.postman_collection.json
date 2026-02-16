@@ -415,6 +415,49 @@
           "response": []
         },
         {
+          "name": "Get Groups",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/whatsapp/groups?sessionId={{sessionId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["whatsapp", "groups"],
+              "query": [
+                {
+                  "key": "sessionId",
+                  "value": "{{sessionId}}"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Get Group Members",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/whatsapp/group-members?sessionId={{sessionId}}&groupId=12345@g.us",
+              "host": ["{{baseUrl}}"],
+              "path": ["whatsapp", "group-members"],
+              "query": [
+                {
+                  "key": "sessionId",
+                  "value": "{{sessionId}}"
+                },
+                {
+                  "key": "groupId",
+                  "value": "12345@g.us",
+                  "description": "Example Group JID"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
           "name": "End Session (Logout)",
           "request": {
             "method": "POST",
