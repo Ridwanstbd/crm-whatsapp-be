@@ -26,6 +26,7 @@ import * as qrcode from 'qrcode-terminal';
 import { v4 as uuidv4 } from 'uuid';
 import * as fs from 'fs';
 import * as path from 'path';
+import { SendBulkMessageDto } from './dto/send-bulk.dto';
 
 interface IBaileysLogger {
   info: (...args: any[]) => void;
@@ -72,6 +73,10 @@ class BaileysLoggerAdapter implements IBaileysLogger {
     return 'warn';
   }
 }
+
+type BulkMessageResult =
+  | { to: string; status: 'SUCCESS'; logId: string | null; }
+  | { to: string; status: 'FAILED'; error: any; };
 
 @Injectable()
 export class WhatsappService implements OnModuleInit, OnModuleDestroy {
@@ -214,6 +219,18 @@ export class WhatsappService implements OnModuleInit, OnModuleDestroy {
         }
       });
     });
+  }
+
+  private sleep(ms: number) {
+    return new Promise((resolve) => setTimeout(resolve, ms));
+  }
+
+  private getRandomDelay(range: string): number {
+    let [min, max] = range.split('-').map((val) => parseInt(val.trim()));
+    if (isNaN(min)) return 10;
+    if (isNaN(max)) max = min;
+    if (min > max) [min, max] = [max, min];
+    return Math.floor(Math.random() * (max - min + 1)) + min;
   }
 
   async startSession(dto: StartSessionDto) {
@@ -386,6 +403,58 @@ export class WhatsappService implements OnModuleInit, OnModuleDestroy {
       });
       return { status: 'failed', error: error.message };
     }
+  }
+
+  async sendBulkMessage(dto: SendBulkMessageDto) {
+    const { sessionId, data, delay } = dto;
+    const results: BulkMessageResult[] = [];
+
+    const sock = this.clients.get(sessionId);
+    if (!sock)
+      throw new BadRequestException('Sesi tidak ditemukan atau terputus.');
+
+    this.logger.log(
+      `Memulai pengiriman massal ke ${data.length} kontak dengan delay range: ${delay} detik`,
+    );
+
+    for (const [index, item] of data.entries()) {
+      // Jika bukan pesan pertama, lakukan delay sebelum mengirim
+      if (index > 0) {
+        const delayInSeconds = this.getRandomDelay(delay);
+        this.logger.log(
+          `Menunggu ${delayInSeconds} detik sebelum mengirim pesan ke-${index + 1}...`,
+        );
+        await this.sleep(delayInSeconds * 1000);
+      }
+
+      try {
+        const result = await this.sendMessage({
+          sessionId,
+          to: item.to,
+          message: item.message,
+          file: item.file,
+          mediaType: item.mediaType as any,
+          fileName: item.fileName,
+        });
+
+        results.push({
+          to: item.to,
+          status: 'SUCCESS',
+          logId: result.status === 'success' ? result.data!.id : null,
+        });
+
+        this.logger.log(`Pesan ke-${index + 1} (${item.to}) terkirim.`);
+      } catch (error) {
+        this.logger.error(`Gagal mengirim ke ${item.to}: ${error.message}`);
+        results.push({ to: item.to, status: 'FAILED', error: error.message });
+      }
+    }
+
+    return {
+      message: 'Proses pengiriman massal selesai',
+      total: data.length,
+      results,
+    };
   }
 
   private getMimeType(fileName?: string): string | null {

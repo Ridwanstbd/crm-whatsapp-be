@@ -393,6 +393,28 @@
           "response": []
         },
         {
+          "name": "Send Bulk Message",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"sessionId\": \"{{sessionId}}\",\n    \"delay\": \"5-10\",\n    \"data\": [\n        {\n            \"to\": \"628123456789\",\n            \"message\": \"Halo, pesan pertama!\"\n        },\n        {\n            \"to\": \"628987654321\",\n            \"message\": \"Salam, pesan kedua dengan attachment\",\n            \"file\": \"https://via.placeholder.com/150\",\n            \"mediaType\": \"image\"\n        },\n        {\n            \"to\": \"628112233445\",\n            \"message\": \"Pesan ketiga dengan dokumen\",\n            \"file\": \"https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf\",\n            \"mediaType\": \"document\",\n            \"fileName\": \"dummy.pdf\"\n        }\n    ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/whatsapp/send-bulk",
+              "host": ["{{baseUrl}}"],
+              "path": ["whatsapp", "send-bulk"]
+            }
+          },
+          "response": []
+        },
+        {
           "name": "End Session (Logout)",
           "request": {
             "method": "POST",

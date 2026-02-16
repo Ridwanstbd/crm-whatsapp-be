@@ -9,11 +9,12 @@ import {
   HttpStatus,
 } from '@nestjs/common';
 import { WhatsappService } from './whatsapp.service';
-import { StartSessionDto, SendMessageDto } from './dto/create-session.dto'; // Pastikan path benar
+import { StartSessionDto, SendMessageDto } from './dto/create-session.dto';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { PermissionsGuard } from 'src/common/guards/permissions.guard';
 import { RequirePermissions } from 'src/common/decorators/permissions.decorator';
 import { FileInterceptor } from '@nestjs/platform-express';
+import { SendBulkMessageDto } from './dto/send-bulk.dto';
 
 @Controller('whatsapp')
 @UseGuards(JwtAuthGuard, PermissionsGuard)
@@ -40,6 +41,12 @@ export class WhatsappController {
     file?: Express.Multer.File,
   ) {
     return this.whatsappService.sendMessage(dto, file);
+  }
+
+  @Post('send-bulk')
+  @RequirePermissions('send_whatsapp_message')
+  sendBulkMessage(@Body() dto: SendBulkMessageDto) {
+    return this.whatsappService.sendBulkMessage(dto);
   }
 
   @Post('end')
