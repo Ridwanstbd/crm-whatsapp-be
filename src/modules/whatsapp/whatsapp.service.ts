@@ -75,8 +75,8 @@ class BaileysLoggerAdapter implements IBaileysLogger {
 }
 
 type BulkMessageResult =
-  | { to: string; status: 'SUCCESS'; logId: string | null; }
-  | { to: string; status: 'FAILED'; error: any; };
+  | { to: string; status: 'SUCCESS'; logId: string | null }
+  | { to: string; status: 'FAILED'; error: any };
 
 @Injectable()
 export class WhatsappService implements OnModuleInit, OnModuleDestroy {
@@ -307,6 +307,10 @@ export class WhatsappService implements OnModuleInit, OnModuleDestroy {
     if (!formattedTo.endsWith('@s.whatsapp.net')) {
       formattedTo = `${formattedTo}@s.whatsapp.net`;
     }
+    const result = (await sock.onWhatsApp(formattedTo))?.[0];
+    if (!result || !result.exists) {
+      throw new BadRequestException(`Nomor ${to} tidak terdaftar di WhatsApp.`);
+    }
 
     const device = await this.prisma.whatsappDevice.findUnique({
       where: { sessionId },
@@ -413,22 +417,34 @@ export class WhatsappService implements OnModuleInit, OnModuleDestroy {
     if (!sock)
       throw new BadRequestException('Sesi tidak ditemukan atau terputus.');
 
+    this.processBulkMessageBackground(sessionId, data, delay).catch((err) => {
+      this.logger.error(`Error pada background bulk send: ${err.message}`);
+    });
+
+    return {
+      message: 'Proses pengiriman massal telah dimulai di latar belakang',
+      total: data.length,
+      status: 'PROCESSING',
+    };
+  }
+
+  private async processBulkMessageBackground(
+    sessionId: string,
+    data: any[],
+    delay: string,
+  ) {
     this.logger.log(
-      `Memulai pengiriman massal ke ${data.length} kontak dengan delay range: ${delay} detik`,
+      `Memulai pengiriman massal ke ${data.length} kontak di latar belakang`,
     );
 
     for (const [index, item] of data.entries()) {
-      // Jika bukan pesan pertama, lakukan delay sebelum mengirim
       if (index > 0) {
         const delayInSeconds = this.getRandomDelay(delay);
-        this.logger.log(
-          `Menunggu ${delayInSeconds} detik sebelum mengirim pesan ke-${index + 1}...`,
-        );
         await this.sleep(delayInSeconds * 1000);
       }
 
       try {
-        const result = await this.sendMessage({
+        await this.sendMessage({
           sessionId,
           to: item.to,
           message: item.message,
@@ -436,25 +452,12 @@ export class WhatsappService implements OnModuleInit, OnModuleDestroy {
           mediaType: item.mediaType as any,
           fileName: item.fileName,
         });
-
-        results.push({
-          to: item.to,
-          status: 'SUCCESS',
-          logId: result.status === 'success' ? result.data!.id : null,
-        });
-
         this.logger.log(`Pesan ke-${index + 1} (${item.to}) terkirim.`);
       } catch (error) {
         this.logger.error(`Gagal mengirim ke ${item.to}: ${error.message}`);
-        results.push({ to: item.to, status: 'FAILED', error: error.message });
       }
     }
-
-    return {
-      message: 'Proses pengiriman massal selesai',
-      total: data.length,
-      results,
-    };
+    this.logger.log('Seluruh proses pengiriman massal selesai.');
   }
 
   private getMimeType(fileName?: string): string | null {
