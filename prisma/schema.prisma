@@ -34,6 +34,14 @@ model Permission {
   roles  Role[]
 }
 
+model CampaignMessage {
+  id        String       @id @default(uuid())
+  title     String
+  createdAt DateTime     @default(now())
+  
+  messages  MessageLog[]
+}
+
 model MessageLog {
   id        String      @id @default(uuid())
   to        String
@@ -43,6 +51,9 @@ model MessageLog {
   
   userId    Int?
   user      User?     @relation(fields: [userId], references: [id])
+
+  campaignId String?
+  campaign   CampaignMessage? @relation(fields: [campaignId], references: [id])
 
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt @default(now())

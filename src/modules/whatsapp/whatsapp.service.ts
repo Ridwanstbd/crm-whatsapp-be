@@ -296,7 +296,11 @@ export class WhatsappService implements OnModuleInit, OnModuleDestroy {
     });
   }
 
-  async sendMessage(dto: SendMessageDto, mediaFile?: Express.Multer.File) {
+  async sendMessage(
+    dto: SendMessageDto,
+    mediaFile?: Express.Multer.File,
+    campaignId?: string,
+  ) {
     const { sessionId, to, message, file, mediaType, fileName } = dto;
     const sock = this.clients.get(sessionId);
 
@@ -332,6 +336,7 @@ export class WhatsappService implements OnModuleInit, OnModuleDestroy {
         body: message + (hasAttachment ? ` [Attachment: ${mediaType}]` : ''),
         status: 'PENDING',
         user: ownerId ? { connect: { id: ownerId } } : undefined,
+        campaign: campaignId ? { connect: { id: campaignId } } : undefined,
       },
     });
 
@@ -416,19 +421,31 @@ export class WhatsappService implements OnModuleInit, OnModuleDestroy {
   }
 
   async sendBulkMessage(dto: SendBulkMessageDto) {
-    const { sessionId, data, delay } = dto;
-    const results: BulkMessageResult[] = [];
+    const { sessionId, data, delay, title } = dto;
 
     const sock = this.clients.get(sessionId);
     if (!sock)
       throw new BadRequestException('Sesi tidak ditemukan atau terputus.');
 
-    this.processBulkMessageBackground(sessionId, data, delay).catch((err) => {
+    const campaign = await this.prisma.campaignMessage.create({
+      data: {
+        title: title,
+      },
+    });
+
+    this.processBulkMessageBackground(
+      sessionId,
+      data,
+      delay,
+      campaign.id,
+    ).catch((err) => {
       this.logger.error(`Error pada background bulk send: ${err.message}`);
     });
 
     return {
       message: 'Proses pengiriman massal telah dimulai di latar belakang',
+      campaignId: campaign.id,
+      campaignTitle: campaign.title,
       total: data.length,
       status: 'PROCESSING',
     };
@@ -438,9 +455,10 @@ export class WhatsappService implements OnModuleInit, OnModuleDestroy {
     sessionId: string,
     data: any[],
     delay: string,
+    campaignId: string,
   ) {
     this.logger.log(
-      `Memulai pengiriman massal ke ${data.length} kontak di latar belakang`,
+      `Memulai pengiriman massal campaign "${campaignId}" ke ${data.length} kontak`,
     );
 
     for (const [index, item] of data.entries()) {
@@ -450,14 +468,18 @@ export class WhatsappService implements OnModuleInit, OnModuleDestroy {
       }
 
       try {
-        await this.sendMessage({
-          sessionId,
-          to: item.to,
-          message: item.message,
-          file: item.file,
-          mediaType: item.mediaType as any,
-          fileName: item.fileName,
-        });
+        await this.sendMessage(
+          {
+            sessionId,
+            to: item.to,
+            message: item.message,
+            file: item.file,
+            mediaType: item.mediaType as any,
+            fileName: item.fileName,
+          },
+          undefined,
+          campaignId,
+        );
         this.logger.log(`Pesan ke-${index + 1} (${item.to}) terkirim.`);
       } catch (error) {
         this.logger.error(`Gagal mengirim ke ${item.to}: ${error.message}`);

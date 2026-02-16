@@ -36,6 +36,10 @@ export class SendBulkMessageDto {
 
   @IsNotEmpty()
   @IsString()
+  title: string;
+
+  @IsNotEmpty()
+  @IsString()
   delay: string;
 
   @IsArray()
