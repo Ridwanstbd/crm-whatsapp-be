@@ -317,7 +317,6 @@ export class WhatsappService implements OnModuleInit, OnModuleDestroy {
 
     if (!sock)
       throw new BadRequestException('Sesi tidak ditemukan atau terputus.');
-
     let formattedTo = to;
 
     if (!formattedTo.includes('@')) {
@@ -332,6 +331,9 @@ export class WhatsappService implements OnModuleInit, OnModuleDestroy {
         );
       }
     }
+    await sock.sendPresenceUpdate('composing', formattedTo);
+    const typingDuration = Math.min(Math.max(message.length * 50, 1000), 4000);
+    await this.sleep(typingDuration);
 
     const device = await this.prisma.whatsappDevice.findUnique({
       where: { sessionId },
@@ -354,7 +356,9 @@ export class WhatsappService implements OnModuleInit, OnModuleDestroy {
       let sentMsg;
 
       if (!hasAttachment) {
-        sentMsg = await sock.sendMessage(formattedTo, { text: message });
+        sentMsg = await sock.sendMessage(formattedTo, {
+          text: message,
+        });
       } else {
         if (!mediaType)
           throw new BadRequestException(
@@ -461,6 +465,71 @@ export class WhatsappService implements OnModuleInit, OnModuleDestroy {
     };
   }
 
+  private processSpintax(text: string): string {
+    return text.replace(/\{([^{}]+)\}/g, (match, content) => {
+      const choices = content.split('|');
+      return choices[Math.floor(Math.random() * choices.length)];
+    });
+  }
+
+  private addInvisibleUnique(text: string): string {
+    const zeroWidthSpace = '\u200B';
+    const randomCount = Math.floor(Math.random() * 10) + 1;
+    return text + zeroWidthSpace.repeat(randomCount);
+  }
+
+  private getTimeBasedGreeting(text: string): string {
+    const hour = new Date().getHours();
+    let timeSpecific = 'Pagi';
+
+    if (hour >= 3 && hour < 11) timeSpecific = 'Pagi';
+    else if (hour >= 11 && hour < 15) timeSpecific = 'Siang';
+    else if (hour >= 15 && hour < 18) timeSpecific = 'Sore';
+    else timeSpecific = 'Malam';
+    const variations = [
+      `Assalamualaikum, Selamat ${timeSpecific}`,
+      `Selamat ${timeSpecific}`,
+      `Halo, Selamat ${timeSpecific}`,
+      `Assalamualaikum`,
+    ];
+
+    const selectedGreeting =
+      variations[Math.floor(Math.random() * variations.length)];
+
+    return text.replace(/\{\{salam\}\}/gi, selectedGreeting);
+  }
+  private applyIndonesianSlang(text: string): string {
+    const replacements = {
+      yang: ['yg', 'yang'],
+      saya: ['sy', 'aku', 'saya'],
+      tidak: ['gak', 'enggak', 'tak', 'tidak'],
+      bisa: ['bs', 'bisa'],
+      'terima kasih': ['makasih', 'trims', 'terima kasih'],
+      karena: ['krn', 'karna', 'karena'],
+      sudah: ['udh', 'sdh', 'sudah'],
+      bagaimana: ['gimana', 'bagaimana'],
+      kak: ['ka', 'kak', 'kakak'],
+    };
+
+    let newText = text;
+
+    for (const [word, variations] of Object.entries(replacements)) {
+      const regex = new RegExp(`\\b${word}\\b`, 'gi');
+
+      newText = newText.replace(regex, (match) => {
+        if (Math.random() > 0.5) {
+          return match;
+        }
+        const chosen =
+          variations[Math.floor(Math.random() * variations.length)];
+        return match[0] === match[0].toUpperCase()
+          ? chosen.charAt(0).toUpperCase() + chosen.slice(1)
+          : chosen;
+      });
+    }
+    return newText;
+  }
+
   private async processBulkMessageBackground(
     sessionId: string,
     data: any[],
@@ -481,18 +550,20 @@ export class WhatsappService implements OnModuleInit, OnModuleDestroy {
       }
 
       try {
-        const timestamp = Date.now();
-        const randomStr = Math.random()
-          .toString(36)
-          .substring(2, 7)
-          .toLowerCase();
-        const uniqueTag = `\n\n${randomStr}${timestamp}`;
-        const uniqueMessage = item.message + uniqueTag;
+        const processor = (rawText: string) => {
+          let txt = this.getTimeBasedGreeting(rawText);
+          txt = this.processSpintax(txt);
+          txt = this.addInvisibleUnique(txt);
+          txt = this.applyIndonesianSlang(txt);
+          return txt;
+        };
+        const finalMessageText = processor(item.message);
+
         await this.sendMessage(
           {
             sessionId,
             to: item.to,
-            message: uniqueMessage,
+            message: finalMessageText,
             file: item.file,
             mediaType: item.mediaType as any,
             fileName: item.fileName,
