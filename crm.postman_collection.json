@@ -458,6 +458,28 @@
           "response": []
         },
         {
+          "name": "Set Auto Reply Campaign",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"campaignId\": \"<CAMPAIGN_ID_FROM_SEND_BULK_MESSAGE>\",\n    \"trace_word\": [\"halo\", \"hi\"],\n    \"delay_reply\": \"3-5\",\n    \"body_message\": [\n        {\n            \"receive\": \"halo\",\n            \"reply\": \"Halo juga, ada yang bisa saya bantu?\"\n        },\n        {\n            \"receive\": \"hi\",\n            \"reply\": \"Hai, bagaimana kabar Anda?\"\n        }\n    ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/whatsapp/campaign/auto-reply",
+              "host": ["{{baseUrl}}"],
+              "path": ["whatsapp", "campaign", "auto-reply"]
+            }
+          },
+          "response": []
+        },
+        {
           "name": "End Session (Logout)",
           "request": {
             "method": "POST",

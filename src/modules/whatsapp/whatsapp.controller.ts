@@ -17,6 +17,7 @@ import { PermissionsGuard } from 'src/common/guards/permissions.guard';
 import { RequirePermissions } from 'src/common/decorators/permissions.decorator';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { SendBulkMessageDto } from './dto/send-bulk.dto';
+import { CreateAutoReplyDto } from './dto/auto-reply.dto';
 
 @Controller('whatsapp')
 @UseGuards(JwtAuthGuard, PermissionsGuard)
@@ -64,6 +65,17 @@ export class WhatsappController {
     @Query('groupId') groupId: string,
   ) {
     return this.whatsappService.scrapeGroupMembers(sessionId, groupId);
+  }
+
+  @Post('campaign/auto-reply')
+  @RequirePermissions('connect_whatsapp')
+  async setAutoReply(@Body() dto: CreateAutoReplyDto) {
+    const result = await this.whatsappService.createAutoReply(dto);
+    return {
+      status: 'success',
+      message: 'Konfigurasi auto-reply campaign berhasil disimpan',
+      data: result,
+    };
   }
 
   @Post('end')
