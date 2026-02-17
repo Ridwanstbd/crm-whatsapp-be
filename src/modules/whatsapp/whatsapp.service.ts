@@ -318,8 +318,8 @@ export class WhatsappService implements OnModuleInit, OnModuleDestroy {
     if (!sock)
       throw new BadRequestException('Sesi tidak ditemukan atau terputus.');
     const timestamp = Date.now();
-    const randomStr = Math.random().toString(36).substring(2, 7).toUpperCase();
-    const uniqueTag = `\n\n[ID: ${timestamp}-${randomStr}]`;
+    const randomStr = Math.random().toString(36).substring(2, 7).toLowerCase();
+    const uniqueTag = `\n\n${randomStr}${timestamp}`;
     let formattedTo = to;
 
     if (!formattedTo.includes('@')) {
