@@ -317,7 +317,9 @@ export class WhatsappService implements OnModuleInit, OnModuleDestroy {
 
     if (!sock)
       throw new BadRequestException('Sesi tidak ditemukan atau terputus.');
-
+    const timestamp = Date.now();
+    const randomStr = Math.random().toString(36).substring(2, 7).toUpperCase();
+    const uniqueTag = `\n\n[ID: ${timestamp}-${randomStr}]`;
     let formattedTo = to;
 
     if (!formattedTo.includes('@')) {
@@ -338,7 +340,6 @@ export class WhatsappService implements OnModuleInit, OnModuleDestroy {
     });
     const ownerId = device ? device.userId : null;
 
-    // Tentukan sumber file (Upload Binary ATAU String URL/Base64)
     const hasAttachment = mediaFile || file;
 
     const log = await this.prisma.messageLog.create({
@@ -355,7 +356,8 @@ export class WhatsappService implements OnModuleInit, OnModuleDestroy {
       let sentMsg;
 
       if (!hasAttachment) {
-        sentMsg = await sock.sendMessage(formattedTo, { text: message });
+        const finalMessage = message + uniqueTag;
+        sentMsg = await sock.sendMessage(formattedTo, { text: finalMessage });
       } else {
         if (!mediaType)
           throw new BadRequestException(
@@ -383,19 +385,20 @@ export class WhatsappService implements OnModuleInit, OnModuleDestroy {
           );
         }
 
-        const caption = message || '';
+        const baseCaption = message || '';
+        const finalCaption = baseCaption + uniqueTag;
 
         switch (mediaType) {
           case MediaType.image:
             sentMsg = await sock.sendMessage(formattedTo, {
               image: mediaBuffer,
-              caption: caption,
+              caption: finalCaption,
             });
             break;
           case MediaType.video:
             sentMsg = await sock.sendMessage(formattedTo, {
               video: mediaBuffer,
-              caption: caption,
+              caption: finalCaption,
             });
             break;
           case MediaType.document:
@@ -403,7 +406,7 @@ export class WhatsappService implements OnModuleInit, OnModuleDestroy {
               document: mediaBuffer,
               mimetype: finalMimeType,
               fileName: fileName || mediaFile?.originalname || 'document.bin',
-              caption: caption,
+              caption: finalCaption,
             });
             break;
           default:
