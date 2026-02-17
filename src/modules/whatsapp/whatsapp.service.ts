@@ -317,9 +317,7 @@ export class WhatsappService implements OnModuleInit, OnModuleDestroy {
 
     if (!sock)
       throw new BadRequestException('Sesi tidak ditemukan atau terputus.');
-    const timestamp = Date.now();
-    const randomStr = Math.random().toString(36).substring(2, 7).toLowerCase();
-    const uniqueTag = `\n\n${randomStr}${timestamp}`;
+
     let formattedTo = to;
 
     if (!formattedTo.includes('@')) {
@@ -356,8 +354,7 @@ export class WhatsappService implements OnModuleInit, OnModuleDestroy {
       let sentMsg;
 
       if (!hasAttachment) {
-        const finalMessage = message + uniqueTag;
-        sentMsg = await sock.sendMessage(formattedTo, { text: finalMessage });
+        sentMsg = await sock.sendMessage(formattedTo, { text: message });
       } else {
         if (!mediaType)
           throw new BadRequestException(
@@ -385,20 +382,19 @@ export class WhatsappService implements OnModuleInit, OnModuleDestroy {
           );
         }
 
-        const baseCaption = message || '';
-        const finalCaption = baseCaption + uniqueTag;
+        const caption = message || '';
 
         switch (mediaType) {
           case MediaType.image:
             sentMsg = await sock.sendMessage(formattedTo, {
               image: mediaBuffer,
-              caption: finalCaption,
+              caption: caption,
             });
             break;
           case MediaType.video:
             sentMsg = await sock.sendMessage(formattedTo, {
               video: mediaBuffer,
-              caption: finalCaption,
+              caption: caption,
             });
             break;
           case MediaType.document:
@@ -406,7 +402,7 @@ export class WhatsappService implements OnModuleInit, OnModuleDestroy {
               document: mediaBuffer,
               mimetype: finalMimeType,
               fileName: fileName || mediaFile?.originalname || 'document.bin',
-              caption: finalCaption,
+              caption: caption,
             });
             break;
           default:
@@ -485,11 +481,18 @@ export class WhatsappService implements OnModuleInit, OnModuleDestroy {
       }
 
       try {
+        const timestamp = Date.now();
+        const randomStr = Math.random()
+          .toString(36)
+          .substring(2, 7)
+          .toLowerCase();
+        const uniqueTag = `\n\n${randomStr}${timestamp}`;
+        const uniqueMessage = item.message + uniqueTag;
         await this.sendMessage(
           {
             sessionId,
             to: item.to,
-            message: item.message,
+            message: uniqueMessage,
             file: item.file,
             mediaType: item.mediaType as any,
             fileName: item.fileName,
