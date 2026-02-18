@@ -333,6 +333,9 @@ export class WhatsappService implements OnModuleInit, OnModuleDestroy {
     }
     await sock.sendPresenceUpdate('composing', formattedTo);
     const typingDuration = Math.min(Math.max(message.length * 50, 1000), 4000);
+    this.logger.log(
+      `Mengetik selama ${typingDuration} detik sebelum mengirim pesan...`,
+    );
     await this.sleep(typingDuration);
 
     const device = await this.prisma.whatsappDevice.findUnique({
@@ -659,7 +662,7 @@ export class WhatsappService implements OnModuleInit, OnModuleDestroy {
         groupId: metadata.id,
         description: metadata.desc?.toString(),
         totalMembers: participants.length,
-        members: participants,
+        data: participants,
       };
     } catch (error) {
       throw new BadRequestException(
