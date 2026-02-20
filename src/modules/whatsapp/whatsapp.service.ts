@@ -27,7 +27,6 @@ import { v4 as uuidv4 } from 'uuid';
 import * as fs from 'fs';
 import * as path from 'path';
 import { SendBulkMessageDto } from './dto/send-bulk.dto';
-import { CreateAutoReplyDto } from './dto/auto-reply.dto';
 
 interface IBaileysLogger {
   info: (...args: any[]) => void;
@@ -74,10 +73,6 @@ class BaileysLoggerAdapter implements IBaileysLogger {
     return 'warn';
   }
 }
-
-type BulkMessageResult =
-  | { to: string; status: 'SUCCESS'; logId: string | null }
-  | { to: string; status: 'FAILED'; error: any };
 
 @Injectable()
 export class WhatsappService implements OnModuleInit, OnModuleDestroy {
@@ -219,16 +214,6 @@ export class WhatsappService implements OnModuleInit, OnModuleDestroy {
           }
         }
       });
-
-      sock.ev.on('messages.upsert', async (m) => {
-        if (m.type !== 'notify') return;
-
-        for (const msg of m.messages) {
-          if (!msg.key.fromMe && msg.message) {
-            await this.handleAutoReply(sessionId, msg);
-          }
-        }
-      });
     });
   }
 
@@ -332,9 +317,14 @@ export class WhatsappService implements OnModuleInit, OnModuleDestroy {
       }
     }
     await sock.sendPresenceUpdate('composing', formattedTo);
-    const typingDuration = Math.min(Math.max(message.length * 50, 1000), 4000);
+    const safeMessage = message || '';
+    const typingDuration = Math.min(
+      Math.max(safeMessage.length * 50, 1000),
+      10000,
+    );
+
     this.logger.log(
-      `Mengetik selama ${typingDuration} detik sebelum mengirim pesan...`,
+      `Mengetik selama ${typingDuration} ms (${typingDuration / 1000} detik) sebelum mengirim pesan...`,
     );
     await this.sleep(typingDuration);
 
@@ -504,7 +494,6 @@ export class WhatsappService implements OnModuleInit, OnModuleDestroy {
   private applyIndonesianSlang(text: string): string {
     const replacements = {
       yang: ['yg', 'yang'],
-      saya: ['sy', 'aku', 'saya'],
       tidak: ['gak', 'enggak', 'tak', 'tidak'],
       bisa: ['bs', 'bisa'],
       'terima kasih': ['makasih', 'trims', 'terima kasih'],
@@ -668,91 +657,6 @@ export class WhatsappService implements OnModuleInit, OnModuleDestroy {
       throw new BadRequestException(
         'Gagal scrape anggota grup: ' + error.message,
       );
-    }
-  }
-
-  async createAutoReply(dto: CreateAutoReplyDto) {
-    const { campaignId, trace_word, body_message, delay_reply } = dto;
-
-    return this.prisma.campaignAutoReply.upsert({
-      where: { campaignId },
-      update: {
-        traceWords: JSON.stringify(trace_word),
-        replyMap: JSON.stringify(body_message),
-        delayReply: delay_reply,
-      },
-      create: {
-        campaignId,
-        traceWords: JSON.stringify(trace_word),
-        replyMap: JSON.stringify(body_message),
-        delayReply: delay_reply,
-      },
-    });
-  }
-
-  private async handleAutoReply(sessionId: string, msg: any) {
-    const remoteJid = msg.key.remoteJid;
-    const textBody =
-      msg.message.conversation || msg.message.extendedTextMessage?.text || '';
-
-    if (!textBody) return;
-
-    const lastLog = await this.prisma.messageLog.findFirst({
-      where: {
-        to: remoteJid,
-        campaignId: { not: null },
-      },
-      orderBy: { createdAt: 'desc' },
-      include: { campaign: { include: { autoReply: true } } },
-    });
-
-    if (!lastLog || !lastLog.campaign || !lastLog.campaign.autoReply) return;
-
-    const config = lastLog.campaign.autoReply;
-    const traceWords: string[] = JSON.parse(config.traceWords);
-    const replyRules: { receive: string; reply: string }[] = JSON.parse(
-      config.replyMap,
-    );
-
-    const lowerText = textBody.toLowerCase();
-    const isMatch = traceWords.some((word) =>
-      lowerText.includes(word.toLowerCase()),
-    );
-
-    if (!isMatch) return;
-
-    let replyMessage = '';
-    const exactMatch = replyRules.find(
-      (r) => r.receive.toLowerCase() === lowerText,
-    );
-
-    if (exactMatch) {
-      replyMessage = exactMatch.reply;
-    } else {
-      const partialMatch = replyRules.find((r) =>
-        lowerText.includes(r.receive.toLowerCase()),
-      );
-      if (partialMatch) replyMessage = partialMatch.reply;
-    }
-
-    if (!replyMessage) return;
-
-    const delaySeconds = this.getRandomDelay(config.delayReply);
-    this.logger.log(
-      `Auto-reply terpicu untuk ${remoteJid}. Menunggu ${delaySeconds} detik...`,
-    );
-
-    await this.sleep(delaySeconds * 1000);
-
-    try {
-      await this.sendMessage({
-        sessionId,
-        to: remoteJid,
-        message: replyMessage,
-      });
-      this.logger.log(`Auto-reply terkirim ke ${remoteJid}`);
-    } catch (error) {
-      this.logger.error(`Gagal kirim auto-reply: ${error.message}`);
     }
   }
 

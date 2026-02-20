@@ -67,17 +67,6 @@ export class WhatsappController {
     return this.whatsappService.scrapeGroupMembers(sessionId, groupId);
   }
 
-  @Post('campaign/auto-reply')
-  @RequirePermissions('connect_whatsapp')
-  async setAutoReply(@Body() dto: CreateAutoReplyDto) {
-    const result = await this.whatsappService.createAutoReply(dto);
-    return {
-      status: 'success',
-      message: 'Konfigurasi auto-reply campaign berhasil disimpan',
-      data: result,
-    };
-  }
-
   @Post('end')
   @RequirePermissions('connect_whatsapp')
   endSession(@Body() body: { sessionId: string }) {
